@@ -34,6 +34,33 @@ def search_inventory(query, df):
     # 5. SUBSTRING SEARCH: Serial (Fallback for partial serials)
     serial_contain = df[df['Từ serial'].str.contains(query, case=False, na=False)]
 
+    # 6. COMBINED KEYWORD SEARCH (AND Logic)
+    # Allows "42x Võ Minh Nhật" -> Finds items with "42x" AND "Võ Minh Nhật" in any field
+    tokens = query.split()
+    if len(tokens) > 1:
+        # Start with all True
+        full_mask = pd.Series([True] * len(df))
+        
+        # For each word, it must exist in AT LEAST ONE of the columns
+        for token in tokens:
+            token_mask = (
+                df['Tên hàng hóa'].str.contains(token, case=False, na=False) |
+                df['Từ serial'].str.contains(token, case=False, na=False)
+            )
+            if 'NHÂN VIÊN NHẬN' in df.columns:
+                token_mask |= df['NHÂN VIÊN NHẬN'].str.contains(token, case=False, na=False)
+            if 'Mã hàng hóa' in df.columns:
+                 token_mask |= df['Mã hàng hóa'].str.contains(token, case=False, na=False)
+            if 'Trạng thái' in df.columns:
+                 token_mask |= df['Trạng thái'].str.contains(token, case=False, na=False)
+            
+            # Combine with AND: The row must satisfy THIS token too
+            full_mask = full_mask & token_mask
+
+        combined_results = df[full_mask]
+        if not combined_results.empty:
+             return combined_results, f"Tìm thấy {len(combined_results)} kết quả tổng hợp cho: '{query}'"
+
     # COMBINE RESULTS
     # Priority: Product Name > Product Code > Employee > Serial
     
@@ -49,4 +76,11 @@ def search_inventory(query, df):
     if not serial_contain.empty:
         return serial_contain, f"Tìm thấy Serial chứa: '{query}'"
 
-    return pd.DataFrame(), f"Không tìm thấy thông tin nào cho từ khóa: '{query}'"
+    return pd.DataFrame(), """**🤔 Hmm, tôi không tìm thấy thông tin nào cho từ khóa này.**
+    
+Là **Trợ lý Kho chuyên nghiệp**, tôi gợi ý bạn:
+1.  🔍 **Kiểm tra Serial:** Đảm bảo nhập đúng chính xác (vd: `21200...`).
+2.  📦 **Tên sản phẩm:** Thử nhập tên ngắn gọn (vd: `Switch` thay vì `Switch 8 cổng...`).
+3.  👤 **Tên nhân viên:** Nhập tên không dấu nếu có dấu không ra kết quả.
+
+*Bạn hãy thử lại xem sao nhé!* 👇"""
