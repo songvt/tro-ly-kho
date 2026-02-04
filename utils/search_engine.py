@@ -31,6 +31,18 @@ def search_inventory(query, df):
     if 'Mã hàng hóa' in df.columns:
         code_contain = df[df['Mã hàng hóa'].str.contains(query, case=False, na=False)]
 
+    # 4b. SUBSTRING SEARCH: Unit/Warehouse (Kho đơn vị)
+    unit_contain = pd.DataFrame()
+    possible_unit_cols = ['QUẬN/HUYỆN', 'LOẠI KHO']
+    for col in possible_unit_cols:
+        if col in df.columns:
+            matches = df[df[col].astype(str).str.contains(query, case=False, na=False)]
+            if not matches.empty:
+                unit_contain = pd.concat([unit_contain, matches])
+    
+    if not unit_contain.empty:
+        unit_contain = unit_contain.drop_duplicates()
+
     # 5. SUBSTRING SEARCH: Serial (Fallback for partial serials)
     serial_contain = df[df['Từ serial'].str.contains(query, case=False, na=False)]
 
@@ -54,6 +66,12 @@ def search_inventory(query, df):
             if 'Trạng thái' in df.columns:
                  token_mask |= df['Trạng thái'].str.contains(token, case=False, na=False)
             
+            # Add Unit Search to Combined Logic
+            possible_unit_cols = ['QUẬN/HUYỆN', 'LOẠI KHO']
+            for col in possible_unit_cols:
+                if col in df.columns:
+                    token_mask |= df[col].astype(str).str.contains(token, case=False, na=False)
+
             # Combine with AND: The row must satisfy THIS token too
             full_mask = full_mask & token_mask
 
@@ -72,6 +90,12 @@ def search_inventory(query, df):
     
     if not emp_contain.empty:
         return emp_contain, f"Tìm thấy {len(emp_contain)} tài sản của nhân viên: '{query}'"
+
+    if not unit_contain.empty:
+        # Group by Unit if possible for better message
+        found_units = unit_contain['QUẬN/HUYỆN'].unique() if 'QUẬN/HUYỆN' in unit_contain.columns else []
+        unit_str = ", ".join(str(u) for u in found_units[:3])
+        return unit_contain, f"Tìm thấy {len(unit_contain)} kết quả tại kho/đơn vị: {unit_str}..."
         
     if not serial_contain.empty:
         return serial_contain, f"Tìm thấy Serial chứa: '{query}'"

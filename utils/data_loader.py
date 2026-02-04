@@ -13,7 +13,7 @@ def load_data(url, is_private=False):
         # 1. Forward Fill (Handle merged cells)
         # This is CRITICAL for both private and public sheets with this structure
         # We forward fill key info from the "Summary Row" down to the "Detail Rows"
-        cols_to_ffill = ['STT', 'Mã hàng hóa', 'Tên hàng hóa', 'NHÂN VIÊN NHẬN', 'Trạng thái', 'QUẬN/HUYỆN']
+        cols_to_ffill = ['STT', 'Mã hàng hóa', 'Tên hàng hóa', 'NHÂN VIÊN NHẬN', 'Trạng thái', 'QUẬN/HUYỆN', 'LOẠI KHO']
         
         # Only ffill columns that actually exist
         existing_cols = [c for c in cols_to_ffill if c in df.columns]
