@@ -118,42 +118,13 @@ if "messages" not in st.session_state:
 if is_authenticated:
     # Load Data
     with st.spinner("⏳ Đang tải dữ liệu kho..."):
-        df = load_data(selected_url)
+        df = load_data(selected_url, is_private=(source_option == "KHO ĐƠN VỊ"))
 
     if df.empty:
         st.error("❌ Không thể tải dữ liệu. Vui lòng kiểm tra kết nối mạng.")
     else:
-        # PREPROCESSING FOR PRIVATE DATA (Hierarchical Structure)
-        if source_option == "KHO ĐƠN VỊ":
-            df = df.copy() # Avoid mutation warning
-            
-            # 0. Normalize Column Names (Upper to Title Case if needed)
-            # The Admin file differs: 'TÊN HÀNG HÓA' vs 'Tên hàng hóa'
-            df.rename(columns={
-                'TÊN HÀNG HÓA': 'Tên hàng hóa',
-                'MÃ HÀNG HÓA': 'Mã hàng hóa',
-                'TRẠNG THÁI': 'Trạng thái',
-                'NHÂN VIÊN NHẬN': 'NHÂN VIÊN NHẬN', # Keep as is if match
-            }, inplace=True)
-
-            # 1. Map 'Từ serial' (Likely Column 7 based on structure)
-            # Header: STT, Code, Name, ..., SL, Empty, Empty, Empty(7), ...
-            # If 'Từ serial' is missing, try to find it by index or alias
-            if 'Từ serial' not in df.columns:
-                 if len(df.columns) > 7:
-                     col_name_7 = df.columns[7]
-                     df.rename(columns={col_name_7: 'Từ serial'}, inplace=True)
-            
-            # 2. Forward Fill for Nested Rows (Header has Name, Detail has Serial)
-            cols_to_ffill = ['Tên hàng hóa', 'NHÂN VIÊN NHẬN', 'Trạng thái', 'QUẬN/HUYỆN', 'Mã hàng hóa']
-            for c in cols_to_ffill:
-                if c in df.columns:
-                    df[c] = df[c].ffill()
-            
-            # 3. Filter out rows with Empty Serial (Header rows or Invalid data)
-            # Users only want to see actual items with Serials
-            if 'Từ serial' in df.columns:
-                df = df[df['Từ serial'].notna() & (df['Từ serial'].astype(str).str.strip() != '')]
+        # Data is already pre-processed by load_data
+        pass
 
         # Display Chat
         for msg in st.session_state.messages:
